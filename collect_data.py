@@ -12,8 +12,9 @@ try:
 except IndexError:
     pass
 
-sys.path.append('/home/gun/Desktop/Carla/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg')  #적절한 파일 path 넣어주기
-
+###################################### 적절한 파일 path 넣어주기 ######################################
+sys.path.append('/home/gun/Desktop/Carla/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg')  
+###################################################################################################
 
 import carla
 from carla import ColorConverter as cc
@@ -71,6 +72,31 @@ except ImportError:
 
 
 ##############################################################################################세팅 관련
+def make_folder_tree(output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    camera_dir_m = os.path.join(output_dir, 'camera_m')
+    imu_dir_m = os.path.join(output_dir, 'imu_m')
+    lidar_dir_m = os.path.join(output_dir, 'lidar_m')
+    gnss_dir_m = os.path.join(output_dir, 'gnss_m')
+
+    os.makedirs(camera_dir_m, exist_ok=True)
+    os.makedirs(imu_dir_m, exist_ok=True)
+    os.makedirs(lidar_dir_m, exist_ok=True)
+    os.makedirs(gnss_dir_m, exist_ok=True)
+
+    camera_dir_s = os.path.join(output_dir, 'camera_s')
+    imu_dir_s = os.path.join(output_dir, 'imu_s')
+    lidar_dir_s = os.path.join(output_dir, 'lidar_s')
+    gnss_dir_s = os.path.join(output_dir, 'gnss_s')
+
+    os.makedirs(camera_dir_s, exist_ok=True)
+    os.makedirs(imu_dir_s, exist_ok=True)
+    os.makedirs(lidar_dir_s, exist_ok=True)
+    os.makedirs(gnss_dir_s, exist_ok=True)
+
+    return camera_dir_s, imu_dir_s, lidar_dir_s, gnss_dir_s, camera_dir_m, imu_dir_m, lidar_dir_m, gnss_dir_m
+
 def set_weather(client, weather): # 날씨 설정
     world = client.get_world()
     weather_presets = {
@@ -89,7 +115,6 @@ def set_weather(client, weather): # 날씨 설정
         'hard_rain_sunset': carla.WeatherParameters.HardRainSunset,
         'soft_rain_sunset': carla.WeatherParameters.SoftRainSunset
     }
-
     if weather in weather_presets:
         world.set_weather(weather_presets[weather])
         print(f"Weather set to {weather}")
@@ -98,7 +123,7 @@ def set_weather(client, weather): # 날씨 설정
         for preset in weather_presets.keys():
             print(preset)
 
-def list_maps(client): 
+def list_maps(client): # 가능한 맵 목록 확인
     available_maps = client.get_available_maps()
     print("Available maps:")
     for map_name in available_maps:
@@ -113,20 +138,6 @@ def change_map(client, map_name): # 맵 바꾸기
         print(f"Map '{map_name}' not found. Available maps are:")
         for available_map in available_maps:
             print(available_map)
-'''
-/Game/Carla/Maps/Town04_Opt
-/Game/Carla/Maps/Town05
-/Game/Carla/Maps/Town10HD
-/Game/Carla/Maps/Town02
-/Game/Carla/Maps/Town02_Opt
-/Game/Carla/Maps/Town03_Opt
-/Game/Carla/Maps/Town04
-/Game/Carla/Maps/Town01_Opt
-/Game/Carla/Maps/Town03
-/Game/Carla/Maps/Town01
-/Game/Carla/Maps/Town10HD_Opt
-/Game/Carla/Maps/Town05_Opt
-'''
 
 ##############################################################################################차량 생성 및 센서 관련 
 def spawn_vehicle_randomly(world, blueprint_library, transform): #랜덤으로 생성
@@ -134,41 +145,45 @@ def spawn_vehicle_randomly(world, blueprint_library, transform): #랜덤으로 �
     vehicle = world.spawn_actor(vehicle_bp, transform)
     return vehicle
 
-def spawn_vehicle(world, blueprint_library, transform, vehicle_type='vehicle.tesla.model3'): #지정 생성
+def spawn_vehicle(world, blueprint_library, transform, vehicle_type='vehicle.tesla.model3'):
     vehicle_bp = blueprint_library.find(vehicle_type)
     vehicle = world.spawn_actor(vehicle_bp, transform)
     return vehicle
 
-def setup_camera(vehicle, blueprint_library, world):
+def setup_camera(vehicle, blueprint_library, world, fps):
     camera_bp = blueprint_library.find('sensor.camera.rgb')
     camera_bp.set_attribute('image_size_x', '800')
     camera_bp.set_attribute('image_size_y', '600')
     camera_bp.set_attribute('fov', '90')
-    camera_bp.set_attribute('sensor_tick', '1')  # 곱해서 1이 되는 게 해당 FPS / 10 FPS = 0.1
-
+    camera_bp.set_attribute('sensor_tick', str(1/fps)) 
     camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))  # Adjust the position as needed
     camera = world.spawn_actor(camera_bp, camera_transform, attach_to=vehicle)
-    
     return camera
 
-def setup_imu(vehicle, blueprint_library, world):
+def setup_imu(vehicle, blueprint_library, world, fps):
     imu_bp = blueprint_library.find('sensor.other.imu')
+    imu_bp.set_attribute('sensor_tick', str(1/fps))  
     imu_transform = carla.Transform(carla.Location(x=0, y=0, z=0))  # Adjust the position as needed
     imu = world.spawn_actor(imu_bp, imu_transform, attach_to=vehicle)
-    
     return imu
 
-def setup_lidar(vehicle, blueprint_library, world):
+def setup_lidar(vehicle, blueprint_library, world, fps):
     lidar_bp = blueprint_library.find('sensor.lidar.ray_cast')
+    lidar_bp.set_attribute('sensor_tick', str(1/fps))  
     lidar_bp.set_attribute('range', '50')
     lidar_bp.set_attribute('rotation_frequency', '10')
     lidar_bp.set_attribute('channels', '32')
     lidar_bp.set_attribute('points_per_second', '100000')
-
     lidar_transform = carla.Transform(carla.Location(x=0, y=0, z=2.4))  # Adjust the position as needed
     lidar = world.spawn_actor(lidar_bp, lidar_transform, attach_to=vehicle)
-    
     return lidar
+
+def setup_gnss(vehicle, blueprint_library, world, fps):
+    gnss_bp = blueprint_library.find('sensor.other.gnss')
+    gnss_bp.set_attribute('sensor_tick', str(1/fps))  
+    gnss_transform = carla.Transform(carla.Location(x=0, y=0, z=2.4))  # Adjust the position as needed
+    gnss = world.spawn_actor(gnss_bp, gnss_transform, attach_to=vehicle)
+    return gnss
 
 ##############################################################################################데이터 취득 관련
 def save_image(image, filename):
@@ -177,7 +192,6 @@ def save_image(image, filename):
     array = array[:, :, :3]  # Remove alpha channel
     filename = os.path.join(filename, f'{image.frame}.png')
     cv2.imwrite(filename, array)
-
 
 def save_imu_data(imu_data, output_dir):
     filename = os.path.join(output_dir, f'imu_data_{imu_data.frame}.txt')
@@ -197,39 +211,80 @@ def save_lidar_data(lidar_data, output_dir):
         for point in points:
             f.write(f"{point[0]} {point[1]} {point[2]}\n")
 
+def save_gnss_data(gnss_data, output_dir):
+    filename = os.path.join(output_dir, f'gnss_data_{gnss_data.frame}.txt')
+    with open(filename, 'w') as f:
+        f.write(f"Latitude: {gnss_data.latitude}\n")
+        f.write(f"Longitude: {gnss_data.longitude}\n")
+        f.write(f"Altitude: {gnss_data.altitude}\n")
 
 if __name__ == '__main__':
 
+    ############################################## 환경 설정 ##############################################
+    # 시나리오 선택
+    '''
+    시나리오 1: 차량에 다른 차량이 접근해 오는 시나리오
+    시나리오 2: 차량에서 다른 차량이 멀어지는 시나리오 
+    '''
+    scenario=2 #1 or 2
+    seed= "1"
+    output_dir = "/home/gun/Desktop/collect_data_carla"  # collect_data_carla clone 한 dir -> data는 clone한 폴더 안에 생성됨
+    fps=10 # 센서 fps
+    ############################################## 환경 설정 ##############################################
 
     # Create output directory if it doesn't exist
-    output_dir = '/home/gun/Desktop/carla_output/test'
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    camera_dir = os.path.join(output_dir, 'camera')
-    imu_dir = os.path.join(output_dir, 'imu')
-    lidar_dir = os.path.join(output_dir, 'lidar')
-    os.makedirs(camera_dir, exist_ok=True)
-    os.makedirs(imu_dir, exist_ok=True)
-    os.makedirs(lidar_dir, exist_ok=True)
+    output_dir = output_dir +'/data/scenario' + str(scenario) + "_" + seed 
+    camera_dir_s, imu_dir_s, lidar_dir_s, gnss_dir_s, camera_dir_m, imu_dir_m, lidar_dir_m, gnss_dir_m = make_folder_tree(output_dir)
 
     # Example usage:
     client = carla.Client('localhost', 2000)
     client.set_timeout(10.0)
 
-    # Set the weather to 'clear'
-    #set_weather(client, 'clear')
-    # List available maps
-    #list_maps(client)
+    # Set the weather to 'clear' (필요하면 아랫줄 주석 풀어서 사용)
+    # set_weather(client, 'clear') 
 
-    # Change to a specific map, e.g., 'Town03'
-    change_map(client, '/Game/Carla/Maps/Town03')
+    # Change to a specific map, e.g., 'Town05'
+    '''
+    가능한 map 목록
+    /Game/Carla/Maps/Town04_Opt
+    /Game/Carla/Maps/Town05
+    /Game/Carla/Maps/Town10HD
+    /Game/Carla/Maps/Town02
+    /Game/Carla/Maps/Town02_Opt
+    /Game/Carla/Maps/Town03_Opt
+    /Game/Carla/Maps/Town04
+    /Game/Carla/Maps/Town01_Opt
+    /Game/Carla/Maps/Town03
+    /Game/Carla/Maps/Town01
+    /Game/Carla/Maps/Town10HD_Opt
+    /Game/Carla/Maps/Town05_Opt
+    '''
+    change_map(client, '/Game/Carla/Maps/Town05')
 
     world = client.get_world()
     blueprint_library = world.get_blueprint_library()
 
+    if scenario == 1:
+        stationary_x = 13
+        stationary_y = 2.5
+        stationary_z = 0.1
+        stationary_yaw = 0
+        moving_x = 44
+        moving_y = -1.5
+        moving_z = 0.1
+        moving_yaw = 180
+    else:
+        stationary_x = 13
+        stationary_y = 2.5
+        stationary_z = 0.1
+        stationary_yaw = 0
+        moving_x = 13
+        moving_y = 5.5
+        moving_z = 0.1
+        moving_yaw = 0
 
     # Define transform for the stationary vehicle
-    stationary_vehicle_transform = carla.Transform(carla.Location(x=89, y=197, z=2), carla.Rotation(yaw=180))
+    stationary_vehicle_transform = carla.Transform(carla.Location(x=stationary_x, y=stationary_y, z=stationary_z), carla.Rotation(yaw=stationary_yaw))   
     stationary_vehicle = spawn_vehicle(world, blueprint_library, stationary_vehicle_transform)
     print(f"Spawned stationary vehicle at {stationary_vehicle_transform.location}")
 
@@ -238,33 +293,49 @@ if __name__ == '__main__':
     stationary_vehicle.apply_control(control)
 
     # Setup camera, IMU, and LiDAR on stationary vehicle
-    camera = setup_camera(stationary_vehicle, blueprint_library, world)
-    imu = setup_imu(stationary_vehicle, blueprint_library, world)
-    lidar = setup_lidar(stationary_vehicle, blueprint_library, world)
+    camera_s = setup_camera(stationary_vehicle, blueprint_library, world, fps)
+    imu_s = setup_imu(stationary_vehicle, blueprint_library, world, fps)
+    lidar_s = setup_lidar(stationary_vehicle, blueprint_library, world, fps)
+    gnss_s = setup_gnss(stationary_vehicle, blueprint_library, world, fps)
 
+    # Define transform for the moving vehicle
+    moving_vehicle_transform = carla.Transform(carla.Location(x=moving_x, y=moving_y, z=moving_z), carla.Rotation(yaw=moving_yaw))  
+    moving_vehicle = spawn_vehicle(world, blueprint_library, moving_vehicle_transform)
+    print(f"Spawned moving vehicle at {moving_vehicle_transform.location}")
 
-    # Define transform for the approaching vehicle
-    approaching_vehicle_transform = carla.Transform(carla.Location(x=50, y=197, z=2), carla.Rotation(yaw=0))
-    approaching_vehicle = spawn_vehicle(world, blueprint_library, approaching_vehicle_transform)
-    print(f"Spawned approaching vehicle at {approaching_vehicle_transform.location}")
+    # Setup camera, IMU, and LiDAR on stationary vehicle
+    camera_m = setup_camera(moving_vehicle, blueprint_library, world, fps)
+    imu_m = setup_imu(moving_vehicle, blueprint_library, world, fps)
+    lidar_m = setup_lidar(moving_vehicle, blueprint_library, world, fps)
+    gnss_m = setup_gnss(moving_vehicle, blueprint_library, world, fps)
 
-    # Move the approaching vehicle straight towards the stationary vehicle
-    approaching_vehicle_control = carla.VehicleControl(throttle=1)  #0~1.0
-    approaching_vehicle.apply_control(approaching_vehicle_control)
+    # Apply acceleration to the moving vehicle
+    moving_vehicle_control = carla.VehicleControl(throttle=0.5)  # 0 ~ 1.0
+    moving_vehicle.apply_control(moving_vehicle_control)
 
+    # Setup listeners to save sensor data             
+    camera_s.listen(lambda image: save_image(image, camera_dir_s))
+    imu_s.listen(lambda imu_data: save_imu_data(imu_data, imu_dir_s))
+    lidar_s.listen(lambda lidar_data: save_lidar_data(lidar_data, lidar_dir_s))
+    gnss_s.listen(lambda gnss_data: save_gnss_data(gnss_data, gnss_dir_s))
 
-    # Setup listeners to save sensor data
-    camera.listen(lambda image: save_image(image, camera_dir))
-    imu.listen(lambda imu_data: save_imu_data(imu_data, imu_dir))
-    lidar.listen(lambda lidar_data: save_lidar_data(lidar_data, lidar_dir))
-
+     # Setup listeners to save sensor data              
+    camera_m.listen(lambda image: save_image(image, camera_dir_m))
+    imu_m.listen(lambda imu_data: save_imu_data(imu_data, imu_dir_m))
+    lidar_m.listen(lambda lidar_data: save_lidar_data(lidar_data, lidar_dir_m))
+    gnss_m.listen(lambda gnss_data: save_gnss_data(gnss_data, gnss_dir_m))
 
     # Let simulation run for a while to see the vehicle moving
     time.sleep(10)
 
     # Stop the simulation and destroy vehicles
     stationary_vehicle.destroy()
-    approaching_vehicle.destroy()
-    camera.destroy()
-    imu.destroy()
-    lidar.destroy()
+    moving_vehicle.destroy()
+    camera_s.destroy()
+    imu_s.destroy()
+    lidar_s.destroy()
+    gnss_s.destroy()
+    camera_m.destroy()
+    imu_m.destroy()
+    lidar_m.destroy()
+    gnss_m.destroy()

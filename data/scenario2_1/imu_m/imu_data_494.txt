@@ -1,0 +1,3 @@
+Accelerometer: Vector3D(x=4246.002441, y=0.052025, z=8.782917)
+Gyroscope: Vector3D(x=0.000002, y=0.000091, z=-0.000002)
+Compass: 1.570784091949463
